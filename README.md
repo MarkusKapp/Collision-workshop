@@ -1,93 +1,625 @@
-# collision-workshop2
+# Collisionid ja füüsika
+
+Tegemist on projektiga, kus osa funktsionaalsusest on teadlikult eemaldatud ning sinu ülesanne on need samm-sammult tagasi lisada. Töötoa eelduseks on, et oled läbinud kliendi ja serveri töötoa ning arvutimängu töötoa.
+
+Pärast materjalidega tutvumist loo isiklik koopia (fork) sellest repositooriumist, mille kallal saad töötada.
+
+Täiesti korrektse ja valmis funktsionaalsustega töötoa koodi leiad [siit](https://gitlab.cs.taltech.ee/iti0301-2026/collision-main). NB! Palun tutvu enne töötoaga alustamist esialgse projektiga ja selle READMEga.
 
 
+Projekti on lisatud ka kaust `TMXLoaders`, mis vastutab Tiledi kaartide parsimise eest serveri poolel. Neid faile ei ole vaja muuta.
 
-## Getting started
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+---
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Soovitused lugemiseks:
 
-## Add your files
+- [Mis on Tiled?](https://gamedevdoc.pages.taltech.ee/tiledmap/tiledmap.html)
+- [Tiled collisionid](https://gamedevdoc.pages.taltech.ee/tile-collision/tile-collision.html)
+- [Skeem mängu arhitektuurist](https://excalidraw.com/#json=kq2idkeEMGFr-LRx4AVKx,Qv7z8Ks417BKfwIkaTcV5A)
+- [Youtube tutorial LibGDX mängu loomiseks (ei ole serverit ega PPM-i kasutatud)](https://www.youtube.com/watch?v=a8MPxzkwBwo)
+---
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
 
+### Ülesanne 1 — Mäng ei alga, kui start vajutada
+
+Hetkel ei alga mäng pärast `Start` nupu vajutamist. Selle asemel mäng crashib ning konsooli ilmub error.
+
+Uuri errorit ning püüa aru saada, mis on valesti.
+
+<details>
+<summary>💡 Vihje 1</summary>
+Probleem seisneb selles, et Java ei leia kaardifaili üles.
+
+Vajuta esmalt Klient vaate peale ning seejärel noole peale, et näha konsooli output’i. Veidi ülespoole kerides peaksid nägema, millises failis ja millisel real error tekib.
+
+![Error](assets/workshopImages/collision-workshop-console.png)
+</details>
+
+<details>
+<summary>💡 Vihje 2</summary>
+
+![Error](assets/workshopImages/collision-workshop-gamescreen.png)
+Esimene error meie koodis tekib `GameScreen` klassis real 61, kus üritatakse kaardifaili laadida. Navigeeri sinna kas errorile klõpsates või avades faili käsitsi.
+</details>
+
+<details>
+<summary>💡 Vihje 3</summary>
+
+Õige `.tmx` fail asub kaustas `shared/src/main/java/TMXAssets`
+</details>
+
+<details>
+<summary>🛠 Lahendus</summary>
+
+Õige kood on:
+`this.map = mapLoader.load("shared/src/main/java/TMXAssets/level1.tmx");`
+</details>
+
+<details>
+<summary>✅ Selgitus</summary>
+
+Kõik .tmx failid peavad asuma kaustas `Shared/TMXAssets`, sest neid kasutavad nii klient kui ka server.
+- Klient kasutab kaarti kujunduse renderdamiseks
+- Server kasutab kaarti Box2D maailma ja collisionite genereerimiseks
+
+Faili nime muutes tuleb alati veenduda, et path on õige nii kliendi kui serveri poolel.
+</details>
+
+---
+
+### Ülesanne 2 — Mäng on väga väike
+
+Mäng käivitub nüüd edukalt, kuid kaart tundub liiga väike. Tegelikult näitab kaamera korraga liiga suurt ala ning mängumaailm paistab justkui „kaugel“.
+
+Probleem esineb kaamera seadistuses.
+<details>
+<summary>💡 Vihje 1</summary>
+
+Probleem on jällegi `GameScreen` klassis, kus kaamera luuakse ja seadistatakse.
+</details>
+
+<details>
+<summary>💡 Vihje 2</summary>
+
+Uuri `GameScreen` klassi rida 58.
+</details>
+
+<details>
+<summary>💡 Vihje 3</summary>
+
+Kaamera kõrgus on õigesti seadistatud, kuid laius on liiga suur.
+</details>
+
+<details>
+<summary>🛠 Lahendus</summary>
+
+Õige kood on:
+`camera.setToOrtho(false, Gdx.graphics.getWidth() / PPM, Gdx.graphics.getHeight() / PPM);`
+</details>
+
+<details>
+<summary>✅ Selgitus</summary>
+
+Tiled kaardi ja Box2D maailma skaleering on seatud PPM-ile (pixels per meter), kus 100 pikslit vastab 1 meetrile.
+Kliendi poolel peavad kõik mõõtmed olema jagatud PPM-iga, et kaamera näitaks õiget ala.
+Server töötab Box2D ühikutes (meetrites), kuid enne kliendile saatmist teisendatakse väärtused pikslitesse, korrutades need PPM-iga.
+
+Seetõttu tuleb kliendi poolel kõik mõõtmed – nagu kaamera viewport ja objektide positsioonid – jagada PPM-iga, et need ühtiksid Box2D maailma ühikutega.
+</details>
+
+---
+
+### Ülesanne 3 — Tegelasi ei renderdata ning serveris on errorid
+
+Nüüd "Start" nupule vajutades mäng avaneb, aga tegelasi ei kuvata ning serveri konsoolis tekivad errorid.
+
+Uuri serveri erroreid ning leia, mis on valesti.
+
+
+<details>
+<summary>💡 Vihje 1</summary>
+
+Vajuta alguses `Server` lahtri peale ning siis noole peale, et näha errorit konsoolis. Natuke üles kerides peaks nägema, kus failis ning mis real errorid tekivad.
+
+![Error](assets/workshopImages/collision-workshop-console.png)
+</details>
+
+<details>
+<summary>💡 Vihje 2</summary>
+
+![Error](assets/workshopImages/collision-workshop-box2dWorldGenerator.png)
+Uuri `Box2DWorldGenerator` klassi serveris ridu 21 ja 46.
+
+</details>
+
+<details>
+<summary>💡 Vihje 3</summary>
+
+Probleem on `getMap()` meetodis.
+</details>
+
+<details>
+<summary>🛠 Lahendus</summary>
+
+Õige kood on:
+
+
+```java
+public TiledMap getMap() {
+        return new HijackedTmxLoader(new MyServer.MyFileHandleResolver())
+                .load("shared/src/main/java/TMXAssets/level1.tmx");}
 ```
-cd existing_repo
-git remote add origin https://gitlab.cs.taltech.ee/iti0301-2026/collision-workshop2.git
-git branch -M main
-git push -uf origin main
+</details>
+
+<details>
+<summary>✅ Selgitus</summary>
+
+Jällegi oli probleem kaardifaili path'is ning tuleb meeles pidada, et `.tmx` fail on kasutusel nii serveris, kui ka kliendi poolel.
+</details>
+
+---
+
+### Ülesanne 3.1 — MapLayer is `null`? - serveris on ikka errorid
+
+Start nupule vajutades otseselt palju ei ole muutunud ning ikka on errorid serveris. Jälgi Serveri konsooli, et uurida erroreid.
+
+
+<details>
+<summary>💡 Vihje 1</summary>
+
+```text
+Exception in thread "Server" java.lang.NullPointerException: Cannot invoke "com.badlogic.gdx.maps.MapLayer.getObjects()" because "mapLayer" is null
+at ee.taltech.examplegame.server.game.Box2dWorldGenerator.initializeWorld(Box2dWorldGenerator.java:29)
 ```
 
-## Integrate with your tools
+Error tekib `Box2DWorldGenerator` klassis reas 29.
+</details>
 
-- [ ] [Set up project integrations](https://gitlab.cs.taltech.ee/iti0301-2026/collision-workshop2/-/settings/integrations)
+<details>
+<summary>💡 Vihje 2</summary>
 
-## Collaborate with your team
+`mapLayer` on `null`, mis tähendab, et Tiled kaardilt ei leitud layerit nimega "kollisionid".
+Uuri Tiled kaarti, et näha, mis layerid eksisteerivad. 
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+Seda saab teha kahte moodi:
+1. Ava Tiled-is level1.tmx fail lahti ning uuri layerite nimekirja.
+2. Tee level1.tmx fail lahti IDE-s ning uuri millised layerid seal on.
 
-## Test and Deploy
+</details>
 
-Use the built-in continuous integration in GitLab.
+<details>
+<summary>💡 Vihje 3</summary>
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Punasega pildil on märgitud TiledMapi layerid. Collisions on loodud "object layer" tüüpi layerina ning selle nimi on "Collisions", aga koodis otsitakse "kollisionid".
 
-***
 
-# Editing this README
+![Error](assets/workshopImages/TiledMap.png)
+![Error](assets/workshopImages/level1-file-picture.png)
+</details>
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+<details>
+<summary>🛠 Lahendus</summary>
 
-## Suggestions for a good README
+Õige kood on `Box2DWorldGenerator` klassis real 22:
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
 
-## Name
-Choose a self-explaining name for your project.
+```java
+MapLayer mapLayer = tiledMap.getLayers().get("Collisions");
+```
+</details>
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+<details>
+<summary>✅ Selgitus</summary>
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+getMap() Loeb Tiled kaardi ning mapLayer leiab ühe layeri täpselt nime järgi.
+Kui Tiled kaardil ja koodis olev nimi ei ühti, tagastatakse null.
+```java
+TiledMap tiledMap = getMap();
+MapLayer mapLayer = tiledMap.getLayers().get("Collisions");
+```
+Lisades enda Tiled kaardile uue Collision layeri, tuleb veenduda, et layeri nimi koodis ja Tiled kaardil ühtiksid.
+</details>
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+---
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### Ülesanne 4 — Oota mida, miks kooala nii suur on?
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Mäng töötab nüüd ilusti ilma erroriteta, aga miks mängija on nii pikk? Tegelase laius tundub normaalne, aga kõrgus on liiga suur.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+Uuri:
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+- Kus renderdatakse mängijat
+- Tegelase kõrgust ja laiust ning kuidas nad erinevad
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+<details>
+<summary>💡 Vihje 1</summary>
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+Probleemi asub kliendi poolel.
+</details>
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+<details>
+<summary>💡 Vihje 2</summary>
 
-## License
-For open source projects, say how it is licensed.
+Vaata `core/game/Player` klassi.
+</details>
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+<details>
+<summary>💡 Vihje 3</summary>
+
+Uuri kuidas kõrgust ja laiust renderdatakse real 34.
+</details>
+
+<details>
+<summary>🛠 Lahendus</summary>
+
+Mängija kõrgus oli jäänud PPM-iga läbi jagamata.
+
+
+Õige kood on real 34:
+`float h = PLAYER_HEIGHT_IN_PIXELS / PPM;`
+</details>
+
+<details>
+<summary>✅ Selgitus</summary>
+
+Siin tuleb taas arvestada PPM-iga. Kõik mõõtmed peavad olema jagatud PPM-iga kliendi poolel (serveris korrutatud), et need ühtiksid Box2D maailma ühikutes.
+
+Kui mõni PPM-iga jagamine ununeb, võib koaala ootamatult hiiglaseks kasvada.
+</details>
+
+---
+
+### Ülesanne 5 — Kas me ei tulnud siia mitte collisioneid tegema?
+
+Leidsime koaala üles, aga Collisionid mitte. Tegelane on alguses nähtav, kuid kukub seejärel läbi põranda. Proovi ka `WASD` nuppe, et kontrollida, kas liikumine toimib.
+
+Tiled-is on olemas collision layer, mis on üles seatud *ristkülikutena*. Miks collisionid siiski ei tööta?
+
+
+<details>
+<summary>💡 Vihje 1</summary>
+
+Collisionid genereeritakse serveri poolel `Box2dWorldGenerator` klassis.
+</details>
+
+<details>
+<summary>💡 Vihje 2</summary>
+
+Probleem esineb ridadel 29-30.
+</details>
+
+<details>
+<summary>💡 Vihje 3</summary>
+
+Kui collisionid on Tiledis loodud ristkülikutena, kas kasutatav MapObject tüüp on ikka õige?
+</details>
+
+<details>
+<summary>🛠 Lahendus</summary>
+
+On olemas erinevad MapObject tüübid, näiteks PolygonMapObject, RectangleMapObject, CircleMapObject jne (ellipsid,  ringid, ristkülikud, kolmnurgad). Kuna meie collisionid on ristkülikutena, siis peaks kasutama RectangleMapObject tüüpi.
+
+Korrektne kood on:
+
+```java
+for (RectangleMapObject object : mapLayer.getObjects().getByType(RectangleMapObject.class)) {
+            Rectangle rectangle = object.getRectangle();
+```
+</details>
+
+<details>
+<summary>✅ Selgitus</summary>
+
+Kuna meie koodis oli valesti üles seadistatud MapObject tüüp, siis Box2D maailmas collisionid ei genereerunudki. Selle tulemusena kukkus tegelane läbi põranda.
+
+Oluline on kasutada õiget tüüpi MapObjecti, mis vastab meie Tiled kaardi collision layeri objektidele. 
+Praegu on loodud collisionid ristkülikukujulised, aga võivad ka olla ringid, ellipsid, kolmnurgad jne. Selle põhjal tuleb valida õige MapObject tüüp.
+
+Kui ühes kaardis on kasutusel mitu erinevat objekti tüüpi, saab nende tüübi tuvastamiseks kasutada if-checke, ning selle põhjal saab luua igale objektile vastava kujuga collisionid.
+</details>
+
+---
+
+
+### Ülesanne 6 — See on lind? See on lennuk? See on... KOAALA?
+
+Leidsime Collisionid ülesse, aga tal on liiga palju energiat, äkki tahab ta kuu peale hüpata?
+
+Investigate 🕵️ 🔎:
+
+- Liikumist, hüppamist ja kuidas nad erinevad
+
+<details>
+<summary>💡 Vihje 1</summary>
+
+Liikumise füüsika toimub `Serveri` poolel `Player` klassis.
+</details>
+
+<details>
+<summary>💡 Vihje 2</summary>
+
+Probleem on hüppamise kiiruse väärtuses.
+</details>
+
+<details>
+<summary>💡 Vihje 3</summary>
+
+Selle leiab Sharedi `Constants.java` failist. realt 17.
+</details>
+
+<details>
+<summary>🛠 Lahendus</summary>
+
+`JUMP_VELOCITY` väärtus oli liiga suur. Sinu mängus vali endale sobiv väärtus, siin mängus sobib hästi näiteks 4f.
+
+`public static final float JUMP_VELOCITY = 4f;`
+</details>
+
+---
+
+Kui juba siin oleme siis, võiks ka gravitatsiooni viimistleda, et hüpped oleksid veidi realistlikumad.
+
+<details>
+<summary>🛠 Lahendus</summary>
+
+Praegu oleme kuu peal, aga tuleks maa peale tagasi väärtusega -9.8f.
+
+`    public static final float GRAVITY = -9.8f;`
+</details>
+
+---
+Praegu mängides, on PPM väärtus 50f, mis teeb mängu aeglaseks ja kohmakaks. Muuda see väärtus 100f-ks, et kõik oleks paremini skaleeritud.
+
+<details>
+<summary>🛠 Lahendus</summary>
+
+PPM-i saab muuta `shared/src/main/java/constant/Constants.java` failis
+
+Real 7:
+`public static final float PPM = 100f;`
+</details>
+
+
+---
+<details>
+
+
+<summary>✅ Selgitus</summary>
+
+Konstantidesse on hea panna kõik väärtused, mida kasutad mitu korda ning mis võivad aja jooksul muutuda. Nii on lihtne neid muuta ühes kohas ning need kehtivad kogu projekti ulatuses.
+
+PPM-i väärtus võib ka muutuda sõltuvalt mängu suurusest ning vajadusest. Enamasti on hea väärtus 50f-200f vahel.
+
+</details>
+
+---
+
+
+### Ülesanne 7 — YIPIII töötab!! Aga päris korras ta ka ei ole...
+
+Collisionid töötavad, aga Koaala hõljub ja tulistamine on ka veider.
+
+Probleem asub serveri poolel.
+
+<details>
+<summary>💡 Vihje 1</summary>
+
+Uuri serveri `Player` klassi.
+</details>
+
+<details>
+<summary>💡 Vihje 2</summary>
+
+Hõljumise põhjuseks on liiga suur või vale kujuga hitbox.
+</details>
+
+<details>
+<summary>💡 Vihje 3</summary>
+
+Ridadel 77-79 esineb probleem ning hitbox on vales formaadis. Ta on loodud ringina, aga tegelane on rohkem ristkülikukujuline.
+</details>
+
+<details>
+<summary>🛠 Lahendus</summary>
+
+
+Õige hitboxi kuju on ristkülik:
+
+```java
+PolygonShape shape = new PolygonShape();
+shape.setAsBox(10 / PPM, 15 / PPM);
+```
+</details>
+
+<details>
+<summary>✅ Selgitus</summary>
+
+Box2D toetab erinevaid kujusid (CircleShape, PolygonShape, BoxShape jne).
+Tegelase hitbox peaks võimalikult hästi vastama tema visuaalsele kujule, mitte tema `.png` suurusele. Seda peaks ise katsetama, et leida sobivaim kuju ja suurus.
+
+Ära unusta ka mõõtmeid PPM-iga jagada.
+
+</details>
+
+---
+
+### Ülesanne 8 — Tulistamine on veider
+
+Tulistamine tuleb mapi alt, aga liigub temaga kaasas ilusti, ehk pooleldi töötab? Mis võiks valesti olla?
+<details>
+<summary>💡 Vihje 1</summary>
+
+Probleem asub serveri `Player` klassis.
+</details>
+
+<details>
+<summary>💡 Vihje 2</summary>
+
+Uuri, kuidas `shoot(Direction direction)` meetod töötab.
+</details>
+
+<details>
+<summary>💡 Vihje 3</summary>
+
+Lisa juurde paar print lauset, mida saab näha serveri poolel konsoolis, et aru saada, kus täpselt bulletid spawnivad.
+
+```java
+public void shoot(Direction direction) {
+    // x/y are synced from Box2D body position and represent the player's center in pixels.
+    // Spawn bullet centered on the player.
+    float spawnX = x - BULLET_WIDTH_IN_PIXELS / 2f;
+    float spawnY = y - BULLET_HEIGHT_IN_PIXELS / 2f;
+    System.out.println("Player position -> x: " + x + ", y: " + y);
+    System.out.println("Bullet spawn position -> x: " + spawnX + ", y: " + spawnY);
+    game.addBullet(new Bullet(spawnX, spawnY, direction, id));
+}
+```
+
+Vigase koodi leiab `updateFromPhysics()` meetodis.
+</details>
+<details>
+<summary>🛠 Lahendus</summary>
+
+Korrektne kood on:
+
+```java
+public void updateFromPhysics() {
+  if (body == null) return;
+  this.x = body.getPosition().x * PPM;
+  this.y = body.getPosition().y * PPM;
+}
+```
+</details>
+
+<details>
+<summary>✅ Selgitus</summary>
+
+Server töötab Box2D maailma ühikutes (meetrites).
+Kuuli õigeks asukoha spawnimiseks tuleb koordinaadid teisendada pikslitesse, korrutades need PPM-iga. Selle tõttu olid y ja x väärtused valed ning bulletid spawnisid vales kohas.
+</details>
+
+--- 
+
+Kui me juba siin oleme siis teeks ka mängija spawnimise asukoha paremaks. Pane mängija spawnima alla vasakule klotsi peale, mitte paremasse ülanurka.
+
+
+<details>
+<summary>💡 Vihje 1</summary>
+
+x, y koordinaadid määravad ta spawnimise koha.
+</details>
+
+<details>
+<summary>💡 Vihje 2</summary>
+
+Rida 39-40
+</details>
+
+
+<details>
+<summary>🛠 Lahendus</summary>
+
+Õigele spawnimise kohale ei ole olemas kindlat vastust, vali endale sobiv koht, kus tundub loogiline alustada. See võib vajada natuke proovimist ja katsetamist. Vaata ka, et tegelane ei spawniks otse collisionite sisse.
+
+Siin mängus sobiks hästi:
+
+```java
+private float x = 50f;
+private float y = 50f;
+```
+</details>
+
+---
+
+### Ülesanne 9 — Teeme ka liikumise loogilisemaks
+
+Hetkel jääb koaala pärast liikumise alustamist liikuma, kuni vajutatakse `S`-klahvi. Samuti ei ole võimalik samal ajal liikuda ja hüpata. See muudab tegelase juhtimise kohmakaks ning kasutaja jaoks ebamugavaks.
+
+Uuri, kuidas liikumise ja inputide loogika on praegu üles ehitatud ning miks ei ole võimalik mitut inputit korraga töödelda ning leida lahendus, kus:
+
+- Tegelane saab liikuda ja hüpata samaaegselt
+- Tegelane jääb seisma, kui ühtegi liikumisklahvi ei vajutata
+- Hüppamine toimub ainult ühe korra klahvi vajutamisel, mitte kogu aeg klahvi all hoides
+- Serverile ei saada liikumissõnumeid, kui tegelase suund ei ole muutunud
+<details>
+<summary>💡 Vihje 1</summary>
+
+Muudatused tuleks teha `PlayerInputManager` klassis, kus töödeldakse kasutaja sisendit ja saadetakse liikumissõnumeid serverile.
+</details>
+
+<details>
+<summary>💡 Vihje 2</summary>
+
+Probleem seisneb `if` `else` `if–else` lausete loogikas: korraga saab aktiveeruda ainult üks haru, mistõttu ei ole võimalik näiteks hüpata ja samal ajal liikuda.
+</details>
+
+<details>
+<summary>💡 Vihje 3</summary>
+
+Hüppamine tuleks käsitleda eraldi `if` lausena. Lisaks tuleb leida loogika, mille korral tegelane jääb seisma, kui ühtegi liikumissuunda ei ole antud.
+</details>
+
+<details>
+<summary>🛠 Lahendus</summary>
+
+LibGDX pakub ka meetodit `isKeyJustPressed`, mis aktiveerub ainult klahvi esmasel vajutamisel, mitte koguaeg klahvi all hoides. See sobib hästi hüppamise jaoks.
+
+Lisatud on ka `else`, mis saadab suuna `Direction.DOWN` juhul, kui kumbagi horisontaalset liikumisklahvi (`A` ega `D`) ei vajutata. Et vältida serveri ülekoormamist, jäetakse meelde viimane serverile saadetud suund ning uus sõnum saadetakse ainult siis, kui suund on muutunud.
+
+Korrektne kood on:
+
+```java
+public class PlayerInputManager {
+    private Direction lastSentDirection = Direction.DOWN;
+
+    public void handleMovementInput() {
+        var movementMessage = new PlayerMovementMessage();
+
+        // detect key presses and send a movement message with the desired direction to the server
+        if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.A)) {
+            movementMessage.setDirection(Direction.LEFT);
+        } else if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.D)) {
+            movementMessage.setDirection(Direction.RIGHT);
+        } else {
+            // No horizontal input -> let server apply deceleration.
+            movementMessage.setDirection(Direction.DOWN);
+        }
+
+        // Jump should be a single event, not continuous while key is held.
+        // also in a separate if to allow jumping while moving horizontally
+        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.W)) {
+            movementMessage.setDirection(Direction.UP);
+        }
+
+        // Only send to server if the direction changed
+        if (movementMessage.getDirection() != lastSentDirection) {
+            ServerConnection
+                    .getInstance()
+                    .getClient()
+                    .sendUDP(movementMessage); // UDP, because nothing bad happens when some messages don't reach the server
+            lastSentDirection = movementMessage.getDirection();
+        }
+    }
+}
+```
+</details>
+
+<details>
+<summary>✅ Selgitus</summary>
+
+Liikumise loogika võib mänguti erineda ning ongi mõeldud arendaja enda poolt läbi mõtlemiseks. Oluline on otsustada, millist tunnetust ja kontrolli sa mängijale pakkuda soovid, ning seejärel vastav loogika ka implementeerida.
+</details>
+
+---
+
+### Kokkuvõtteks -
+
+Nüüd on meil töötav füüsika ja Collisionid valmis! Kui pole veel proovinud, siis mitme mängija vahel toimivad ka collisionid! Mängu saaks veel täiendada paari mõttega, mida siin töötoas ei käsitletud:
+
+- Lisada bulletite ja kaardi vahelised collisionid
+- Muuta hüppamise loogika selliseks, et ei oleks võimalik lõpmatult hüpata
+- Lisada mängualale piirid või seinad, et tegelane ei saaks kaardist välja minna
+
+Kui ei soovi kasutada füüsikapõhist liikumist (näiteks ülevalt vaates mängus), saab tegelase liikumise üle tuua example game töötoast, kus liigutatakse x- ja y-koordinaate suurendades või vähendades.
