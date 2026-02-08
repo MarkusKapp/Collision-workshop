@@ -17,7 +17,7 @@ Soovitused lugemiseks:
 - [Mis on Tiled?](https://gamedevdoc.pages.taltech.ee/tiledmap/tiledmap.html)
 - [Tiled collisionid](https://gamedevdoc.pages.taltech.ee/tile-collision/tile-collision.html)
 - [Skeem mängu arhitektuurist](https://excalidraw.com/#json=kq2idkeEMGFr-LRx4AVKx,Qv7z8Ks417BKfwIkaTcV5A)
-- [Youtube tutorial LibGDX mängu loomiseks (ei ole serverit ega PPM-i kasutatud)](https://www.youtube.com/watch?v=a8MPxzkwBwo)
+- [Youtube tutorial LibGDX mängu loomiseks (ei ole serverit kasutatud, aga väga sarnane ning hea vaadata)](https://www.youtube.com/watch?v=a8MPxzkwBwo)
 ---
 
 
@@ -101,8 +101,11 @@ Kaamera kõrgus on õigesti seadistatud, kuid laius on liiga suur.
 <details>
 <summary>✅ Selgitus</summary>
 
-Tiled kaardi ja Box2D maailma skaleering on seatud PPM-ile (pixels per meter), kus 100 pikslit vastab 1 meetrile.
-Kliendi poolel peavad kõik mõõtmed olema jagatud PPM-iga, et kaamera näitaks õiget ala.
+Tiled kaardi ja Box2D maailma skaleering on määratud PPM-i (pixels per meter) abil, kus 100 pikslit vastab 1 meetrile.
+Kuna TiledMap kasutab piksleid ja Box2D maailm meetriteid, tuleb pikslid teisendada meetriteks, et mõõtühikud ühtiksid.
+
+Esialgu oli kaardi laius 640px  ning kõrgus 4.8m (480 / 100), mistõttu oli kaart väga väikene, kuna kaamera luges selle laiuseks 640m.
+
 Server töötab Box2D ühikutes (meetrites), kuid enne kliendile saatmist teisendatakse väärtused pikslitesse, korrutades need PPM-iga.
 
 Seetõttu tuleb kliendi poolel kõik mõõtmed – nagu kaamera viewport ja objektide positsioonid – jagada PPM-iga, et need ühtiksid Box2D maailma ühikutega.
@@ -180,7 +183,7 @@ Error tekib `Box2DWorldGenerator` klassis reas 29.
 <summary>💡 Vihje 2</summary>
 
 `mapLayer` on `null`, mis tähendab, et Tiled kaardilt ei leitud layerit nimega "kollisionid".
-Uuri Tiled kaarti, et näha, mis layerid eksisteerivad. 
+Uuri Tiled kaarti, et näha, mis layerid eksisteerivad.
 
 Seda saab teha kahte moodi:
 1. Ava Tiled-is level1.tmx fail lahti ning uuri layerite nimekirja.
@@ -264,7 +267,9 @@ Mängija kõrgus oli jäänud PPM-iga läbi jagamata.
 <details>
 <summary>✅ Selgitus</summary>
 
-Siin tuleb taas arvestada PPM-iga. Kõik mõõtmed peavad olema jagatud PPM-iga kliendi poolel (serveris korrutatud), et need ühtiksid Box2D maailma ühikutes.
+
+Kuna tegelase suurus on määratud pikslites ning kaamera, koos kaardiga töötab meetrites, tuleb pikslid teisendada meetriteks, et kõik oleks oleks kooskõlas. Seetõttu oligi koaala nii suur, kuna 32 pikslit tõlgendati 32 meetrina.
+Siin tuleb taas arvestada PPM-iga. Kõik mõõtmed peavad olema jagatud PPM-iga kliendi poolel, et need ühtiksid Box2D maailma ühikutes.
 
 Kui mõni PPM-iga jagamine ununeb, võib koaala ootamatult hiiglaseks kasvada.
 </details>
@@ -314,7 +319,7 @@ for (RectangleMapObject object : mapLayer.getObjects().getByType(RectangleMapObj
 
 Kuna meie koodis oli valesti üles seadistatud MapObject tüüp, siis Box2D maailmas collisionid ei genereerunudki. Selle tulemusena kukkus tegelane läbi põranda.
 
-Oluline on kasutada õiget tüüpi MapObjecti, mis vastab meie Tiled kaardi collision layeri objektidele. 
+Oluline on kasutada õiget tüüpi MapObjecti, mis vastab meie Tiled kaardi collision layeri objektidele.
 Praegu on loodud collisionid ristkülikukujulised, aga võivad ka olla ringid, ellipsid, kolmnurgad jne. Selle põhjal tuleb valida õige MapObject tüüp.
 
 Kui ühes kaardis on kasutusel mitu erinevat objekti tüüpi, saab nende tüübi tuvastamiseks kasutada if-checke, ning selle põhjal saab luua igale objektile vastava kujuga collisionid.
@@ -366,7 +371,7 @@ Kui juba siin oleme siis, võiks ka gravitatsiooni viimistleda, et hüpped oleks
 
 Praegu oleme kuu peal, aga tuleks maa peale tagasi väärtusega -9.8f.
 
-`    public static final float GRAVITY = -9.8f;`
+`public static final float GRAVITY = -9.8f;`
 </details>
 
 ---
@@ -436,68 +441,11 @@ shape.setAsBox(10 / PPM, 15 / PPM);
 <details>
 <summary>✅ Selgitus</summary>
 
-Box2D toetab erinevaid kujusid (CircleShape, PolygonShape, BoxShape jne).
+Box2D toetab erinevaid kujusid (CircleShape, PolygonShape jne).
 Tegelase hitbox peaks võimalikult hästi vastama tema visuaalsele kujule, mitte tema `.png` suurusele. Seda peaks ise katsetama, et leida sobivaim kuju ja suurus.
 
 Ära unusta ka mõõtmeid PPM-iga jagada.
 
-</details>
-
----
-
-### Ülesanne 8 — Tulistamine on veider
-
-Tulistamine tuleb mapi alt, aga liigub temaga kaasas ilusti, ehk pooleldi töötab? Mis võiks valesti olla?
-<details>
-<summary>💡 Vihje 1</summary>
-
-Probleem asub serveri `Player` klassis.
-</details>
-
-<details>
-<summary>💡 Vihje 2</summary>
-
-Uuri, kuidas `shoot(Direction direction)` meetod töötab.
-</details>
-
-<details>
-<summary>💡 Vihje 3</summary>
-
-Lisa juurde paar print lauset, mida saab näha serveri poolel konsoolis, et aru saada, kus täpselt bulletid spawnivad.
-
-```java
-public void shoot(Direction direction) {
-    // x/y are synced from Box2D body position and represent the player's center in pixels.
-    // Spawn bullet centered on the player.
-    float spawnX = x - BULLET_WIDTH_IN_PIXELS / 2f;
-    float spawnY = y - BULLET_HEIGHT_IN_PIXELS / 2f;
-    System.out.println("Player position -> x: " + x + ", y: " + y);
-    System.out.println("Bullet spawn position -> x: " + spawnX + ", y: " + spawnY);
-    game.addBullet(new Bullet(spawnX, spawnY, direction, id));
-}
-```
-
-Vigase koodi leiab `updateFromPhysics()` meetodis.
-</details>
-<details>
-<summary>🛠 Lahendus</summary>
-
-Korrektne kood on:
-
-```java
-public void updateFromPhysics() {
-  if (body == null) return;
-  this.x = body.getPosition().x * PPM;
-  this.y = body.getPosition().y * PPM;
-}
-```
-</details>
-
-<details>
-<summary>✅ Selgitus</summary>
-
-Server töötab Box2D maailma ühikutes (meetrites).
-Kuuli õigeks asukoha spawnimiseks tuleb koordinaadid teisendada pikslitesse, korrutades need PPM-iga. Selle tõttu olid y ja x väärtused valed ning bulletid spawnisid vales kohas.
 </details>
 
 --- 
@@ -531,6 +479,71 @@ private float y = 50f;
 ```
 </details>
 
+
+---
+
+### Ülesanne 8 — Tulistamine on veider
+
+Tulistamine tuleb mapi alt, aga liigub temaga kaasas ilusti, ehk pooleldi töötab? Mis võiks valesti olla?
+<details>
+<summary>💡 Vihje 1</summary>
+
+Probleem asub serveri `Player` klassis.
+</details>
+
+<details>
+<summary>💡 Vihje 2</summary>
+
+Uuri, kuidas `shoot(Direction direction)` meetod töötab.
+
+Lisa juurde paar print lauset, mida saab näha serveri poolel konsoolis, et aru saada, kus täpselt bulletid spawnivad.
+
+```java
+public void shoot(Direction direction) {
+    // x/y are synced from Box2D body position and represent the player's center in pixels.
+    // Spawn bullet centered on the player.
+    float spawnX = x - BULLET_WIDTH_IN_PIXELS / 2f;
+    float spawnY = y - BULLET_HEIGHT_IN_PIXELS / 2f;
+    System.out.println("Player position -> x: " + x + ", y: " + y);
+    System.out.println("Bullet spawn position -> x: " + spawnX + ", y: " + spawnY);
+    game.addBullet(new Bullet(spawnX, spawnY, direction, id));
+}
+```
+</details>
+
+<details>
+<summary>💡 Vihje 3</summary>
+
+Vigase koodi leiab `updateFromPhysics()` meetodis.
+</details>
+<details>
+<summary>🛠 Lahendus</summary>
+
+Korrektne kood on:
+
+```java
+public void updateFromPhysics() {
+  if (body == null) return;
+  this.x = body.getPosition().x * PPM;
+  this.y = body.getPosition().y * PPM;
+}
+```
+</details>
+
+<details>
+<summary>✅ Selgitus</summary>
+
+Oluline on mõista, et selles projektis:
+- `Player` kasutab Box2D füüsikat, mis töötab **meetrites**
+- `Bullets` kasutavad lihtsamat liikumist, mis töötavad **pikslites**
+
+Kui vaatad `Bullet.java` faili serveris, näed, et kuulide `update()` meetod liigutab neid lihtsalt `BULLET_SPEED` võrra iga tic-iga pikslites, mitte Box2D füüsikaga. Seega on oluline, et kuuli spawnimise asukoht toimuks samuti pikslites.
+
+Kui see teisendus puudub, on `x` ja `y` väärtused meetrites (näiteks 5.2 meetrit), aga `shoot()` meetod eeldab neid olevat pikslites (näiteks 520 pikslit). Seetõttu spawnisid kuulid mapi alt, kuna `y`-asukoht oli 0.50, mitte 50px.
+
+</details>
+
+
 ---
 
 ### Ülesanne 9 — Teeme ka liikumise loogilisemaks
@@ -558,50 +571,77 @@ Probleem seisneb `if` `else` `if–else` lausete loogikas: korraga saab aktiveer
 <details>
 <summary>💡 Vihje 3</summary>
 
+LibGDX pakub ka meetodit `isKeyJustPressed`, mis aktiveerub ainult klahvi esmasel vajutamisel, mitte koguaeg klahvi all hoides. See sobib hästi hüppamise jaoks.
+
 Hüppamine tuleks käsitleda eraldi `if` lausena. Lisaks tuleb leida loogika, mille korral tegelane jääb seisma, kui ühtegi liikumissuunda ei ole antud.
 </details>
 
 <details>
 <summary>🛠 Lahendus</summary>
 
-LibGDX pakub ka meetodit `isKeyJustPressed`, mis aktiveerub ainult klahvi esmasel vajutamisel, mitte koguaeg klahvi all hoides. See sobib hästi hüppamise jaoks.
+Sellele ülesandele võib leida erinevaid lahendusi, siin on üks võimalik viis, kuidas muuta liikumise loogikat.
 
-Lisatud on ka `else`, mis saadab suuna `Direction.DOWN` juhul, kui kumbagi horisontaalset liikumisklahvi (`A` ega `D`) ei vajutata. Et vältida serveri ülekoormamist, jäetakse meelde viimane serverile saadetud suund ning uus sõnum saadetakse ainult siis, kui suund on muutunud.
 
-Korrektne kood on:
+
+`PlayerInputManager` klassis tuleks teha järgmised muudatused:
+```java
+ public void handleMovementInput() {
+    var movementMessage = new PlayerMovementMessage();
+
+    // detect key presses and send a movement message with the desired direction to the server
+    if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.A)) {
+        movementMessage.setDirection(Direction.LEFT);
+    } else if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.D)) {
+        movementMessage.setDirection(Direction.RIGHT);
+    } else if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.S)) {
+        movementMessage.setDirection(Direction.DOWN);
+    }
+    // Jump should be a single event, not continuous while key is held.
+    // also in a separate if to allow jumping while moving horizontally
+    if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.W)) {
+        movementMessage.setDirection(Direction.UP);
+    }
+    // don't send anything if no movement key is pressed
+    if (movementMessage.getDirection() == null) return;
+    // Only send to server if the direction changed
+    ServerConnection
+            .getInstance()
+            .getClient()
+            .sendUDP(movementMessage); // UDP, because nothing bad happens when some messages don't reach the server
+}
+```
+
+
+Serveri poolel `Player` klassis:
 
 ```java
-public class PlayerInputManager {
-    private Direction lastSentDirection = Direction.DOWN;
-
-    public void handleMovementInput() {
-        var movementMessage = new PlayerMovementMessage();
-
-        // detect key presses and send a movement message with the desired direction to the server
-        if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.A)) {
-            movementMessage.setDirection(Direction.LEFT);
-        } else if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.D)) {
-            movementMessage.setDirection(Direction.RIGHT);
-        } else {
-            // No horizontal input -> let server apply deceleration.
-            movementMessage.setDirection(Direction.DOWN);
-        }
-
-        // Jump should be a single event, not continuous while key is held.
-        // also in a separate if to allow jumping while moving horizontally
-        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.W)) {
-            movementMessage.setDirection(Direction.UP);
-        }
-
-        // Only send to server if the direction changed
-        if (movementMessage.getDirection() != lastSentDirection) {
-            ServerConnection
-                    .getInstance()
-                    .getClient()
-                    .sendUDP(movementMessage); // UDP, because nothing bad happens when some messages don't reach the server
-            lastSentDirection = movementMessage.getDirection();
-        }
+public void move(Direction direction) {
+    // NEW
+    if (direction == null) {
+        body.setLinearVelocity(0, body.getLinearVelocity().y);
+        return;
     }
+    // Direction comes from the client.
+    // Horizontal movement
+    if (direction == Direction.LEFT) {
+        body.setLinearVelocity(-PLAYER_SPEED, body.getLinearVelocity().y);
+    } else if (direction == Direction.RIGHT) {
+        body.setLinearVelocity(PLAYER_SPEED, body.getLinearVelocity().y);
+    } else {
+        body.setLinearVelocity(0, body.getLinearVelocity().y);
+    }
+    // Jump (separate from horizontal movement)
+    if (direction == Direction.UP) {
+        body.setLinearVelocity(body.getLinearVelocity().x, JUMP_VELOCITY);
+    }
+}
+
+public void updateFromPhysics() {
+    if (body == null) return;
+    this.x = body.getPosition().x * PPM;
+    this.y = body.getPosition().y * PPM;
+    // NEW
+    move(null); // Stop horizontal movement if no input is given
 }
 ```
 </details>
