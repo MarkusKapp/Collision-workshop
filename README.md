@@ -226,7 +226,7 @@ Lisades enda Tiled kaardile uue Collision layeri, tuleb veenduda, et layeri nimi
 
 ---
 
-### Ülesanne 4 — Oota mida, miks kooala nii suur on?
+### Ülesanne 4 — Oota mida, miks koaala nii suur on?
 
 Mäng töötab nüüd ilusti ilma erroriteta, aga miks mängija on nii pikk? Tegelase laius tundub normaalne, aga kõrgus on liiga suur.
 
