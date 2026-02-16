@@ -4,7 +4,7 @@ Tegemist on projektiga, kus osa funktsionaalsusest on teadlikult eemaldatud ning
 
 Pärast materjalidega tutvumist loo isiklik koopia (fork) sellest repositooriumist, mille kallal saad töötada.
 
-Täiesti korrektse ja valmis funktsionaalsustega töötoa koodi leiad [siit](https://gitlab.cs.taltech.ee/iti0301-2026/collision-main). **NB! Palun tutvu enne töötoaga alustamist esialgse projektiga ja selle READMEga.**
+Täiesti korrektse ja valmis funktsionaalsustega töötoa koodi leiad [siit](https://github.com/MarkusKapp/Collision-main). **NB! Palun tutvu enne töötoaga alustamist esialgse projektiga ja selle READMEga.**
 
 
 Projekti on lisatud ka kaust `TMXLoaders`, mis vastutab Tiledi kaartide parsimise eest serveri poolel. Neid faile ei ole vaja muuta.
